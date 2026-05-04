@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>互動文字雲</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 32px;
+            background: rgba(255,255,255,0.04);
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            gap: 20px;
+        }
+
+        .title-section h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .title-section p {
+            color: #64748b;
+            margin-top: 6px;
+            font-size: 0.9rem;
+        }
+
+        .qr-section {
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        .qr-label {
+            font-size: 0.78rem;
+            color: #64748b;
+            margin-bottom: 8px;
+            letter-spacing: 0.03em;
+        }
+
+        #qrcode {
+            border-radius: 10px;
+            background: white;
+            padding: 8px;
+            display: block;
+        }
+
+        .url-text {
+            font-size: 0.65rem;
+            color: #475569;
+            margin-top: 6px;
+            word-break: break-all;
+            max-width: 130px;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 36px 20px 48px;
+            gap: 28px;
+        }
+
+        /* Input */
+        .input-section { width: 100%; max-width: 520px; }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        #wordInput {
+            flex: 1;
+            padding: 14px 20px;
+            border: 2px solid rgba(255,255,255,0.08);
+            border-radius: 14px;
+            background: rgba(255,255,255,0.05);
+            color: #e2e8f0;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        #wordInput:focus { border-color: #60a5fa; }
+        #wordInput::placeholder { color: #475569; }
+
+        #submitBtn {
+            padding: 14px 28px;
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            color: white;
+            border: none;
+            border-radius: 14px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s, transform 0.1s;
+            white-space: nowrap;
+        }
+
+        #submitBtn:hover { opacity: 0.88; }
+        #submitBtn:active { transform: scale(0.96); }
+        #submitBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        /* Controls */
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        #toggleBtn {
+            padding: 10px 24px;
+            background: rgba(255,255,255,0.07);
+            color: #cbd5e1;
+            border: 1px solid rgba(255,255,255,0.14);
+            border-radius: 24px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        #toggleBtn:hover { background: rgba(255,255,255,0.12); }
+
+        #toggleBtn.active {
+            background: rgba(96, 165, 250, 0.15);
+            border-color: rgba(96, 165, 250, 0.5);
+            color: #93c5fd;
+        }
+
+        .word-count {
+            color: #475569;
+            font-size: 0.88rem;
+        }
+
+        /* Cloud */
+        #cloudSection {
+            width: 100%;
+            max-width: 900px;
+            background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(255,255,255,0.07);
+            border-radius: 20px;
+            overflow: hidden;
+            min-height: 360px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        #wordcloud {
+            width: 100%;
+            height: 360px;
+            display: block;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #334155;
+            position: absolute;
+        }
+
+        .empty-state .icon { font-size: 3rem; margin-bottom: 14px; }
+        .empty-state p { font-size: 1rem; }
+
+        /* Word list */
+        .word-list-section {
+            width: 100%;
+            max-width: 900px;
+        }
+
+        .section-label {
+            font-size: 0.75rem;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 12px;
+        }
+
+        .word-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .chip {
+            padding: 6px 14px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.09);
+            border-radius: 20px;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            animation: popIn 0.3s ease;
+        }
+
+        .chip .badge {
+            background: rgba(96, 165, 250, 0.18);
+            color: #60a5fa;
+            padding: 1px 8px;
+            border-radius: 10px;
+            font-size: 0.72rem;
+            font-weight: 700;
+        }
+
+        @keyframes popIn {
+            from { opacity: 0; transform: scale(0.85); }
+            to   { opacity: 1; transform: scale(1); }
+        }
+
+        /* Live badge */
+        .live-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.75rem;
+            color: #4ade80;
+            background: rgba(74, 222, 128, 0.1);
+            border: 1px solid rgba(74, 222, 128, 0.25);
+            border-radius: 20px;
+            padding: 4px 12px;
+        }
+
+        .live-dot {
+            width: 7px; height: 7px;
+            background: #4ade80;
+            border-radius: 50%;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50%       { opacity: 0.3; }
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 28px;
+            left: 50%;
+            transform: translateX(-50%) translateY(80px);
+            background: #1e293b;
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #e2e8f0;
+            padding: 12px 24px;
+            border-radius: 14px;
+            font-size: 0.9rem;
+            transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
+            z-index: 999;
+            white-space: nowrap;
+        }
+
+        .toast.show { transform: translateX(-50%) translateY(0); }
+
+        /* Mobile */
+        @media (max-width: 600px) {
+            header { padding: 16px 20px; }
+            .title-section h1 { font-size: 1.4rem; }
+            #qrcode { width: 90px !important; height: 90px !important; }
+            .url-text { max-width: 90px; font-size: 0.6rem; }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="title-section">
+        <h1>💬 互動文字雲</h1>
+        <p>輸入你的詞彙，一起創作</p>
+    </div>
+    <div class="qr-section">
+        <p class="qr-label">📱 掃描加入</p>
+        <canvas id="qrcode"></canvas>
+        <p id="url-text" class="url-text"></p>
+    </div>
+</header>
+
+<div class="main-content">
+
+    <div class="input-section">
+        <div class="input-group">
+            <input type="text" id="wordInput" placeholder="輸入你的詞彙…" maxlength="20" autocomplete="off">
+            <button id="submitBtn">送出</button>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button id="toggleBtn">☁️ 顯示文字雲</button>
+        <span id="wordCount" class="word-count">載入中…</span>
+        <span class="live-badge"><span class="live-dot"></span>即時同步</span>
+    </div>
+
+    <div id="cloudSection" style="display:none">
+        <canvas id="wordcloud" width="900" height="360"></canvas>
+        <div id="emptyCloud" class="empty-state">
+            <div class="icon">🌱</div>
+            <p>還沒有詞彙，快輸入第一個！</p>
+        </div>
+    </div>
+
+    <div class="word-list-section">
+        <p class="section-label">📊 所有詞彙（依熱門排序）</p>
+        <div class="word-chips" id="wordChips">
+            <span style="color:#334155">載入中…</span>
+        </div>
+    </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/wordcloud@1.2.2/src/wordcloud2.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+
+<script>
+// ── Config ──────────────────────────────────────────────
+const SUPABASE_URL = 'https://tgkdugvvwkgkmaslzbbd.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRna2R1Z3Z2d2tna21hc2x6YmJkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4Mzk5MjcsImV4cCI6MjA5MzQxNTkyN30.XgOsvKby3T69YXdc0_ColAMCyBT04cHuCyb38nFbdzY';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ── State ────────────────────────────────────────────────
+let words = [];
+let cloudVisible = false;
+
+// ── DOM ──────────────────────────────────────────────────
+const wordInput  = document.getElementById('wordInput');
+const submitBtn  = document.getElementById('submitBtn');
+const toggleBtn  = document.getElementById('toggleBtn');
+const cloudSection = document.getElementById('cloudSection');
+const wordChips  = document.getElementById('wordChips');
+const wordCountEl = document.getElementById('wordCount');
+const toastEl    = document.getElementById('toast');
+
+// ── QR Code ──────────────────────────────────────────────
+const pageUrl = window.location.href;
+document.getElementById('url-text').textContent = pageUrl;
+QRCode.toCanvas(document.getElementById('qrcode'), pageUrl, {
+    width: 120,
+    margin: 1,
+    color: { dark: '#0f172a', light: '#ffffff' }
+}).catch(() => {});
+
+// ── Toast ────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg) {
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toastEl.classList.remove('show'), 2500);
+}
+
+// ── Load words ───────────────────────────────────────────
+async function loadWords() {
+    const { data, error } = await sb
+        .from('words')
+        .select('word, count')
+        .order('count', { ascending: false });
+
+    if (!error && data) {
+        words = data;
+        renderChips();
+        if (cloudVisible) renderCloud();
+    }
+}
+
+// ── Render chips ─────────────────────────────────────────
+function renderChips() {
+    const total = words.reduce((s, w) => s + w.count, 0);
+    wordCountEl.textContent = `${words.length} 個詞彙・共 ${total} 次`;
+
+    if (words.length === 0) {
+        wordChips.innerHTML = '<span style="color:#334155">還沒有詞彙，快輸入第一個！</span>';
+        return;
+    }
+
+    wordChips.innerHTML = words
+        .slice(0, 50)
+        .map(w => `<div class="chip">${w.word}<span class="badge">${w.count}</span></div>`)
+        .join('');
+}
+
+// ── Render word cloud ─────────────────────────────────────
+const COLORS = ['#60a5fa','#a78bfa','#34d399','#f472b6','#fb923c','#38bdf8','#c084fc','#fbbf24'];
+
+function renderCloud() {
+    const canvas = document.getElementById('wordcloud');
+    const empty  = document.getElementById('emptyCloud');
+
+    if (words.length === 0) {
+        empty.style.display = 'block';
+        canvas.style.display = 'none';
+        return;
+    }
+
+    empty.style.display = 'none';
+    canvas.style.display = 'block';
+
+    const maxCount = Math.max(...words.map(w => w.count));
+    const list = words.map(w => [w.word, Math.max(14, Math.round((w.count / maxCount) * 80))]);
+
+    WordCloud(canvas, {
+        list,
+        gridSize: 10,
+        weightFactor: 1,
+        fontFamily: '"Segoe UI", system-ui, sans-serif',
+        fontWeight: '700',
+        color: () => COLORS[Math.floor(Math.random() * COLORS.length)],
+        rotateRatio: 0.25,
+        rotationSteps: 2,
+        backgroundColor: 'transparent',
+        shrinkToFit: true,
+        drawOutOfBound: false,
+    });
+}
+
+// ── Toggle cloud ──────────────────────────────────────────
+toggleBtn.addEventListener('click', () => {
+    cloudVisible = !cloudVisible;
+    if (cloudVisible) {
+        cloudSection.style.display = 'flex';
+        toggleBtn.textContent = '🙈 隱藏文字雲';
+        toggleBtn.classList.add('active');
+        renderCloud();
+    } else {
+        cloudSection.style.display = 'none';
+        toggleBtn.textContent = '☁️ 顯示文字雲';
+        toggleBtn.classList.remove('active');
+    }
+});
+
+// ── Submit word ───────────────────────────────────────────
+async function submitWord() {
+    const raw  = wordInput.value.trim();
+    if (!raw) { wordInput.focus(); return; }
+    const word = raw.toLowerCase();
+
+    submitBtn.disabled = true;
+    wordInput.disabled = true;
+
+    const { error } = await sb.rpc('add_word', { input_word: word });
+
+    if (error) {
+        showToast('❌ 送出失敗，請再試一次');
+        console.error(error);
+    } else {
+        wordInput.value = '';
+        showToast(`✅ 已送出「${raw}」`);
+    }
+
+    submitBtn.disabled = false;
+    wordInput.disabled = false;
+    wordInput.focus();
+}
+
+submitBtn.addEventListener('click', submitWord);
+wordInput.addEventListener('keydown', e => { if (e.key === 'Enter') submitWord(); });
+
+// ── Realtime ──────────────────────────────────────────────
+sb.channel('words-live')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'words' }, () => {
+        loadWords();
+    })
+    .subscribe();
+
+// ── Init ──────────────────────────────────────────────────
+loadWords();
+</script>
+</body>
+</html>
